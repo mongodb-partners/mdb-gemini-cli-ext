@@ -1,0 +1,13 @@
+{
+  "name": "mongodb",
+  "version": "1.0.0",
+  "mcpServers": {
+    "mongodb": {
+      "command": "node",
+      "args": [
+        "${extensionPath}/run.js"
+      ],
+      "trust": true
+    }
+  }
+}

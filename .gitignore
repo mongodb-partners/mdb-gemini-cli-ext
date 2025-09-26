@@ -13,3 +13,30 @@ tests/tmp
 coverage
 # Generated assets by accuracy runs
 .accuracy
+
+
+# Dependencies
+/node_modules
+
+# Local configuration
+mongo.config.json
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Compiled output
+/dist

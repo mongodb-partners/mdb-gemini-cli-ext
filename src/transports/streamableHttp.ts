@@ -1,4 +1,4 @@
-import express from "express";
+import express, { type NextFunction, type Request, type Response } from "express";
 import type http from "http";
 import { randomUUID } from "crypto";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -43,7 +43,7 @@ export class StreamableHttpRunner extends TransportRunnerBase {
 
         app.enable("trust proxy"); // needed for reverse proxy support
         app.use(express.json());
-        app.use((req, res, next) => {
+        app.use((req: Request, res: Response, next: NextFunction) => {
             for (const [key, value] of Object.entries(this.userConfig.httpHeaders)) {
                 const header = req.headers[key.toLowerCase()];
                 if (!header || header !== value) {
@@ -55,7 +55,7 @@ export class StreamableHttpRunner extends TransportRunnerBase {
             next();
         });
 
-        const handleSessionRequest = async (req: express.Request, res: express.Response): Promise<void> => {
+        const handleSessionRequest = async (req: Request, res: Response): Promise<void> => {
             const sessionId = req.headers["mcp-session-id"];
             if (!sessionId) {
                 res.status(400).json({
@@ -93,7 +93,7 @@ export class StreamableHttpRunner extends TransportRunnerBase {
 
         app.post(
             "/mcp",
-            this.withErrorHandling(async (req: express.Request, res: express.Response) => {
+            this.withErrorHandling(async (req: Request, res: Response) => {
                 const sessionId = req.headers["mcp-session-id"];
                 if (sessionId) {
                     await handleSessionRequest(req, res);

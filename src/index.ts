@@ -44,93 +44,6 @@ import { StreamableHttpRunner } from "./transports/streamableHttp.js";
 import { systemCA } from "@mongodb-js/devtools-proxy-support";
 import { Keychain } from "./common/keychain.js";
 
-async function main(): Promise<void> {
-    systemCA().catch(() => undefined); // load system CA asynchronously as in mongosh
-
-    assertHelpMode();
-    assertVersionMode();
-
-    const transportRunner =
-        config.transport === "stdio"
-            ? new StdioRunner({
-                  userConfig: config,
-              })
-            : new StreamableHttpRunner({
-                  userConfig: config,
-              });
-    const shutdown = (): void => {
-        transportRunner.logger.info({
-            id: LogId.serverCloseRequested,
-            context: "server",
-            message: `Server close requested`,
-        });
-
-        transportRunner
-            .close()
-            .then(() => {
-                transportRunner.logger.info({
-                    id: LogId.serverClosed,
-                    context: "server",
-                    message: `Server closed`,
-                });
-                process.exit(0);
-            })
-            .catch((error: unknown) => {
-                transportRunner.logger.error({
-                    id: LogId.serverCloseFailure,
-                    context: "server",
-                    message: `Error closing server: ${error as string}`,
-                });
-                process.exit(1);
-            });
-    };
-
-    process.on("SIGINT", shutdown);
-    process.on("SIGABRT", shutdown);
-    process.on("SIGTERM", shutdown);
-    process.on("SIGQUIT", shutdown);
-
-    try {
-        await transportRunner.start();
-    } catch (error: unknown) {
-        transportRunner.logger.info({
-            id: LogId.serverCloseRequested,
-            context: "server",
-            message: `Closing server due to error: ${error as string}`,
-            noRedaction: true,
-        });
-
-        try {
-            await transportRunner.close();
-            transportRunner.logger.info({
-                id: LogId.serverClosed,
-                context: "server",
-                message: "Server closed",
-            });
-        } catch (error: unknown) {
-            transportRunner.logger.error({
-                id: LogId.serverCloseFailure,
-                context: "server",
-                message: `Error closing server: ${error as string}`,
-            });
-        }
-        throw error;
-    }
-}
-
-main().catch((error: unknown) => {
-    // At this point, we may be in a very broken state, so we can't rely on the logger
-    // being functional. Instead, create a brand new ConsoleLogger and log the error
-    // to the console.
-    const logger = new ConsoleLogger(Keychain.root);
-    logger.emergency({
-        id: LogId.serverStartFailure,
-        context: "server",
-        message: `Fatal error running server: ${error as string}`,
-    });
-    process.exit(1);
-});
-
 function assertHelpMode(): void | never {
     if (config.help) {
         console.log("For usage information refer to the README.md:");
@@ -143,5 +56,91 @@ function assertVersionMode(): void | never {
     if (config.version) {
         console.log(packageInfo.version);
         process.exit(0);
+    }
+}
+
+export async function startServer(): Promise<void> {
+    try {
+        systemCA().catch(() => undefined); // load system CA asynchronously as in mongosh
+        assertHelpMode();
+        assertVersionMode();
+
+        const transportRunner =
+            config.transport === "stdio"
+                ? new StdioRunner({
+                      userConfig: config,
+                  })
+                : new StreamableHttpRunner({
+                      userConfig: config,
+                  });
+        const shutdown = (): void => {
+            transportRunner.logger.info({
+                id: LogId.serverCloseRequested,
+                context: "server",
+                message: `Server close requested`,
+            });
+
+            transportRunner
+                .close()
+                .then(() => {
+                    transportRunner.logger.info({
+                        id: LogId.serverClosed,
+                        context: "server",
+                        message: `Server closed`,
+                    });
+                    process.exit(0);
+                })
+                .catch((error: unknown) => {
+                    transportRunner.logger.error({
+                        id: LogId.serverCloseFailure,
+                        context: "server",
+                        message: `Error closing server: ${error as string}`,
+                    });
+                    process.exit(1);
+                });
+        };
+
+        process.on("SIGINT", shutdown);
+        process.on("SIGABRT", shutdown);
+        process.on("SIGTERM", shutdown);
+        process.on("SIGQUIT", shutdown);
+
+        try {
+            await transportRunner.start();
+        } catch (error: unknown) {
+            transportRunner.logger.info({
+                id: LogId.serverCloseRequested,
+                context: "server",
+                message: `Closing server due to error: ${error as string}`,
+                noRedaction: true,
+            });
+
+            try {
+                await transportRunner.close();
+                transportRunner.logger.info({
+                    id: LogId.serverClosed,
+                    context: "server",
+                    message: "Server closed",
+                });
+            } catch (error: unknown) {
+                transportRunner.logger.error({
+                    id: LogId.serverCloseFailure,
+                    context: "server",
+                    message: `Error closing server: ${error as string}`,
+                });
+            }
+            throw error;
+        }
+    } catch (error: unknown) {
+        // At this point, we may be in a very broken state, so we can't rely on the logger
+        // being functional. Instead, create a brand new ConsoleLogger and log the error
+        // to the console.
+        const logger = new ConsoleLogger(Keychain.root);
+        logger.emergency({
+            id: LogId.serverStartFailure,
+            context: "server",
+            message: `Fatal error running server: ${error as string}`,
+        });
+        process.exit(1);
     }
 }
